@@ -1,0 +1,13 @@
+﻿  Compiling CUDA source file cudaWorker.cu...
+  
+  C:\Users\QZero\source\repos\cudaMineSweeper\cudaMineSweeper>"D:\cuda\bin\nvcc.exe" -gencode=arch=compute_52,code=\"sm_52,compute_52\" --use-local-env -ccbin "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\bin\HostX86\x64" -x cu   -ID:\cuda\include -ID:\cuda\include     --keep-dir x64\Release  -maxrregcount=0   --machine 64 --compile -cudart static    -DNDEBUG -DCUDAMINESWEEPER_EXPORTS -D_WINDOWS -D_USRDLL -D_WINDLL -D_UNICODE -DUNICODE -Xcompiler "/EHsc /W3 /nologo /O2 /FS   /MD " -Xcompiler "/Fdx64\Release\vc142.pdb" -o C:\Users\QZero\source\repos\cudaMineSweeper\cudaMineSweeper\x64\Release\cudaWorker.cu.obj "C:\Users\QZero\source\repos\cudaMineSweeper\cudaMineSweeper\cudaWorker.cu" 
+  cudaWorker.cu
+  tmpxft_000047cc_00000000-7_cudaWorker.cudafe1.cpp
+  dllmain.cpp
+    正在创建库 C:\Users\QZero\source\repos\cudaMineSweeper\x64\Release\cudaMineSweeper.lib 和对象 C:\Users\QZero\source\repos\cudaMineSweeper\x64\Release\cudaMineSweeper.exp
+  正在生成代码
+  3 of 17 functions (17.6%) were compiled, the rest were copied from previous compilation.
+    1 functions were new in current compilation
+    1 functions had inline decision re-evaluated but remain unchanged
+  已完成代码的生成
+  cudaMineSweeper.vcxproj -> C:\Users\QZero\source\repos\cudaMineSweeper\x64\Release\cudaMineSweeper.dll
