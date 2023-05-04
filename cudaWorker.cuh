@@ -5,13 +5,19 @@
 
 #include "data.h"
 
-#include<stdio.h>
+#include<iostream>
 
 #include <jni.h>
 
-//void freeImage(Image* image);
-void solve(Image* game, jlong* targets, jdouble* result, int targetSize, Profile* profile);
+#include <Windows.h>
 
-__global__ void solveCuda(Image* game, jlong* targets, jdouble* result, int targetSize, Profile* profile);
+using namespace std;
+
+//void freeImage(Image* image);
+void solve(Image* game, jlong* targets, jint* result, int targetSize, Profile* profile,
+	int xNum, int yNum);
+
+__global__ void solveCuda(Image* game, jlong* targets, jint* result, int targetSize, Profile* profile,
+	double* resultLikelihood);
 //__global__ void freeImageCuda(Image* image);
 

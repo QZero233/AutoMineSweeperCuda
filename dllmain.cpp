@@ -101,8 +101,9 @@ JNIEXPORT void JNICALL Java_com_qzero_mine_recognize_NativeRecognizer_releaseIma
     //freeImage(image);
 }
 
-JNIEXPORT jdoubleArray JNICALL Java_com_qzero_mine_recognize_NativeRecognizer_calculateLikelihood
+JNIEXPORT jintArray JNICALL Java_com_qzero_mine_recognize_NativeRecognizer_calculateLikelihood
 (JNIEnv* env, jobject, jlong game, jlongArray targets, jlong profilePtr, jint xNum, jint yNum) {
+
     jsize targetSize = env->GetArrayLength(targets);
 
     jboolean isCopy = 0;
@@ -110,23 +111,24 @@ JNIEXPORT jdoubleArray JNICALL Java_com_qzero_mine_recognize_NativeRecognizer_ca
     Image* gamePtr = (Image*)game;
 
     //Malloc space for result
-    jsize resultSize = targetSize * xNum * yNum;
-    jdouble* result;
-    cudaMalloc((void**)&result, resultSize * sizeof(jdouble));
+    int resultSize = xNum * yNum;
+    jint* result;
+    cudaMalloc((void**)&result, resultSize * sizeof(jint));
 
-    solve(gamePtr, targetPtrs, result, targetSize, (Profile*)profilePtr);
+    
+    solve(gamePtr, targetPtrs, result, targetSize, (Profile*)profilePtr, xNum, yNum);
 
     //Copy result to host
-    jdouble* hostResult = new jdouble[resultSize * sizeof(jdouble)];
-    cudaMemcpy(hostResult, result, resultSize * sizeof(jdouble), cudaMemcpyDeviceToHost);
+    jint* hostResult = new jint[resultSize];
+    cudaMemcpy(hostResult, result, resultSize * sizeof(jint), cudaMemcpyDeviceToHost);
 
-    //Format double array
-    jdoubleArray resultArray = env->NewDoubleArray(resultSize);
-    jdouble* resultNative = env->GetDoubleArrayElements(resultArray, &isCopy);
+    //Format int array
+    jintArray resultArray = env->NewIntArray(resultSize);
+    jint* resultNative = env->GetIntArrayElements(resultArray, &isCopy);
 
-    memcpy(resultNative, hostResult, resultSize * sizeof(jdouble));
+    memcpy(resultNative, hostResult, resultSize * sizeof(jint));
 
-    env->ReleaseDoubleArrayElements(resultArray, resultNative, 0);
+    env->ReleaseIntArrayElements(resultArray, resultNative, 0);
 
     //Release resources
     cudaFree(result);

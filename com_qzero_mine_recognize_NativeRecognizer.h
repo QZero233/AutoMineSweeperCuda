@@ -31,7 +31,7 @@ extern "C" {
 	 * Method:    calculateLikelihood
 	 * Signature: (J[JLcom/qzero/mine/recognize/Coordinate;Lcom/qzero/mine/recognize/Coordinate;)[D
 	 */
-	JNIEXPORT jdoubleArray JNICALL Java_com_qzero_mine_recognize_NativeRecognizer_calculateLikelihood
+	JNIEXPORT jintArray JNICALL Java_com_qzero_mine_recognize_NativeRecognizer_calculateLikelihood
 	(JNIEnv*, jobject, jlong, jlongArray, jlong, jint, jint);
 
 #ifdef __cplusplus

@@ -11,13 +11,16 @@ __device__ int getIdx(int x, int y, Image* img) {
 //	cudaFree(image);
 //}
 
-__global__ void solveCuda(Image* game, jlong* targets, jdouble* result, int targetSize, Profile* profile) {
+__global__ void solveCuda(Image* game, jlong* targets, jint* result, int targetSize, Profile* profile,
+	double* resultLikelihood) {
 
 	int targetX = blockIdx.x;
 	int targetY = blockIdx.y;
 
 	if (targetX >= profile->xNum || targetY >= profile->yNum)
 		return;
+
+	int targetOffset = targetSize * (targetY * profile->xNum + targetX);
 
 	int index = threadIdx.x;
 	int stride = blockDim.x;
@@ -28,7 +31,7 @@ __global__ void solveCuda(Image* game, jlong* targets, jdouble* result, int targ
 		Coordinate leftTop;
 		leftTop.x = profile->xDivides[targetX];
 		leftTop.y = profile->yDivides[targetY];
-
+		
 		Coordinate rightBottom;
 		rightBottom.x = profile->xDivides[targetX + 1];
 		rightBottom.y = profile->yDivides[targetY + 1];
@@ -49,23 +52,65 @@ __global__ void solveCuda(Image* game, jlong* targets, jdouble* result, int targ
 			}
 		}
 
-		int targetOffset = targetSize * (targetY * profile->xNum + targetX);
-		result[targetOffset + i] = currentSum / (xMin * yMin);
+		resultLikelihood[targetOffset + i] = currentSum / (xMin * yMin);
+		if (i == 0) {
+			result[targetY * profile->xNum + targetX] = currentSum / (xMin * yMin);
+		}
 	}
+
+	__syncthreads();
+
+	//Judge
+	if (index == 0) {
+		int bestIndex = -1;
+		double bestLikelihood = 1e20;
+		for (int j = 0; j < targetSize; j++) {
+			if (resultLikelihood[targetOffset + j] < bestLikelihood) {
+				bestLikelihood = resultLikelihood[targetOffset + j];
+				bestIndex = j;
+			}
+		}
+
+		result[targetY * profile->xNum + targetX] = bestIndex;
+	}
+	
 }
 
-void solve(Image* game, jlong* targets, jdouble* result, int targetSize, Profile* profile) {
-	dim3 blockSize((targetSize / 32 + 1) * 32);
-	dim3 gridSize(128,128);
+void solve(Image* game, jlong* targets, jint* result, int targetSize, Profile* profile,
+	int xNum, int yNum) {
+
+	DWORD start = GetTickCount();
+
+	//Create temp array
+	double* resultLikelihood;
+	cudaMalloc((void**)&resultLikelihood, xNum * yNum * targetSize * sizeof(double));
 
 	//Copy targets array
 	jlong* cudaTargets = NULL;
 	cudaMalloc((void**)&cudaTargets, targetSize * sizeof(jlong*));
 	cudaMemcpy(cudaTargets, targets, targetSize * sizeof(jlong*), cudaMemcpyHostToDevice);
 
-	solveCuda << <gridSize, blockSize >> > (game, cudaTargets, result, targetSize, profile);
+	//Invoke kernel
+	dim3 blockSize((targetSize / 32 + 1) * 32);
+	dim3 gridSize(128, 128);
+	solveCuda << <gridSize, blockSize >> > (game, cudaTargets, result, targetSize, profile,resultLikelihood);
 
+	//Debug
+	//cudaDeviceSynchronize();
+	//cout << "After solve " << (GetTickCount() - start) << endl;
+	//double* d = new double[xNum * yNum * targetSize];
+	//cudaMemcpy(d, resultLikelihood, xNum * yNum * targetSize * sizeof(double), cudaMemcpyDeviceToHost);
+	//int cnt = 0;
+	//for (int i = 0; i < xNum * yNum * targetSize; i++) {
+	//	if (d[i] == 0)
+	//		//cout << d[i] << endl;
+	//		cnt++;
+	//}
+	//cout << cnt << endl;
+
+	//Release
 	cudaFree(cudaTargets);
+	cudaFree(resultLikelihood);
 }
 
 //void freeImage(Image* image) {
