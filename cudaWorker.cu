@@ -1,7 +1,7 @@
 #include "cudaWorker.cuh"
 #include<algorithm>
 
-__device__ int getIdx(int x, int y, Image* img) {
+__device__ int inline getIdx(int x, int y, Image* img) {
 	return y * img->colNum + x;
 }
 
@@ -11,8 +11,9 @@ __device__ int getIdx(int x, int y, Image* img) {
 //	cudaFree(image);
 //}
 
-__global__ void solveCuda(Image* game, jlong* targets, jint* result, int targetSize, Profile* profile,
-	double* resultLikelihood) {
+__global__ void solveCuda(Image* game, jlong* targets, jint* result, int targetSize, Profile* profile) {
+
+	extern __shared__ double resultLikelihood[];
 
 	int targetX = blockIdx.x;
 	int targetY = blockIdx.y;
@@ -24,14 +25,14 @@ __global__ void solveCuda(Image* game, jlong* targets, jint* result, int targetS
 
 	int index = threadIdx.x;
 	int stride = blockDim.x;
-	for (int i = index; i < targetSize; i += stride){
+	for (int i = index; i < targetSize; i += stride) {
 		//Calculate target i for (x,y)
 		Image* target = (Image*)targets[i];
 
 		Coordinate leftTop;
 		leftTop.x = profile->xDivides[targetX];
 		leftTop.y = profile->yDivides[targetY];
-		
+
 		Coordinate rightBottom;
 		rightBottom.x = profile->xDivides[targetX + 1];
 		rightBottom.y = profile->yDivides[targetY + 1];
@@ -52,10 +53,13 @@ __global__ void solveCuda(Image* game, jlong* targets, jint* result, int targetS
 			}
 		}
 
-		resultLikelihood[targetOffset + i] = currentSum / (xMin * yMin);
 		if (i == 0) {
-			result[targetY * profile->xNum + targetX] = currentSum / (xMin * yMin);
+			result[targetY * profile->xNum + targetX] = currentSum;
 		}
+
+		currentSum /= xMin * yMin;
+		resultLikelihood[i] = currentSum;
+		
 	}
 
 	__syncthreads();
@@ -65,39 +69,41 @@ __global__ void solveCuda(Image* game, jlong* targets, jint* result, int targetS
 		int bestIndex = -1;
 		double bestLikelihood = 1e20;
 		for (int j = 0; j < targetSize; j++) {
-			if (resultLikelihood[targetOffset + j] < bestLikelihood) {
-				bestLikelihood = resultLikelihood[targetOffset + j];
+			if (resultLikelihood[j] < bestLikelihood) {
+				bestLikelihood = resultLikelihood[j];
 				bestIndex = j;
 			}
 		}
 
 		result[targetY * profile->xNum + targetX] = bestIndex;
 	}
-	
+
 }
 
 void solve(Image* game, jlong* targets, jint* result, int targetSize, Profile* profile,
 	int xNum, int yNum) {
 
-	DWORD start = GetTickCount();
+	//DWORD start = GetTickCount();
 
 	//Create temp array
-	double* resultLikelihood;
-	cudaMalloc((void**)&resultLikelihood, xNum * yNum * targetSize * sizeof(double));
+	//double* resultLikelihood;
+	//cudaMalloc((void**)&resultLikelihood, xNum * yNum * targetSize * sizeof(double));
 
 	//Copy targets array
 	jlong* cudaTargets = NULL;
 	cudaMalloc((void**)&cudaTargets, targetSize * sizeof(jlong*));
 	cudaMemcpy(cudaTargets, targets, targetSize * sizeof(jlong*), cudaMemcpyHostToDevice);
 
+	//cudaDeviceSynchronize();
+	
 	//Invoke kernel
 	dim3 blockSize((targetSize / 32 + 1) * 32);
 	dim3 gridSize(128, 128);
-	solveCuda << <gridSize, blockSize >> > (game, cudaTargets, result, targetSize, profile,resultLikelihood);
+	solveCuda << <gridSize, blockSize, targetSize*sizeof(double) >> > (game, cudaTargets, result, targetSize, profile);
 
 	//Debug
 	//cudaDeviceSynchronize();
-	//cout << "After solve " << (GetTickCount() - start) << endl;
+	//cout << "After cuda solve " << (GetTickCount() - start) << endl;
 	//double* d = new double[xNum * yNum * targetSize];
 	//cudaMemcpy(d, resultLikelihood, xNum * yNum * targetSize * sizeof(double), cudaMemcpyDeviceToHost);
 	//int cnt = 0;
@@ -110,7 +116,7 @@ void solve(Image* game, jlong* targets, jint* result, int targetSize, Profile* p
 
 	//Release
 	cudaFree(cudaTargets);
-	cudaFree(resultLikelihood);
+	//cudaFree(resultLikelihood);
 }
 
 //void freeImage(Image* image) {

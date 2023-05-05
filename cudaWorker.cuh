@@ -17,7 +17,7 @@ using namespace std;
 void solve(Image* game, jlong* targets, jint* result, int targetSize, Profile* profile,
 	int xNum, int yNum);
 
-__global__ void solveCuda(Image* game, jlong* targets, jint* result, int targetSize, Profile* profile,
-	double* resultLikelihood);
+__global__ void solveCuda(Image* game, jlong* targets, jint* result, int targetSize, Profile* profile);
 //__global__ void freeImageCuda(Image* image);
+
 
